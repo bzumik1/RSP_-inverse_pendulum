@@ -4,3 +4,5 @@ bode(sys)
 nyquist(sys)
 
 pzplot(sys)
+step(sys)
+impulse(sys)
