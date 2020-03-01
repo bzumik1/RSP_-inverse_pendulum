@@ -102,6 +102,8 @@ d2T = 0;
 d2t = 0;
 d2a = 0;
 
+bonked_k = -1;
+k_afterBonk = 0;
 
 %% Simulace
 tic
@@ -112,7 +114,7 @@ for k = 1:simulationTime/dt
     
     % Generovani pozadovaneho stavu
     if rand(1) > 0.99      
-        W = [(2*rand(1)-1)*0.85, pi, 0, 0];
+        W = [(2*rand(1)-1)*0.50, pi, 0, 0];
         %W = [sign(2*rand(1)-1)*0.9, pi, 0, 0];
         %W = [sin(pi/16*k*dt), pi, 0, 0];
         Wrel = W - X_operating;
@@ -120,7 +122,7 @@ for k = 1:simulationTime/dt
     
     %% Generovani poruchy
     if rand(1) > 0.99      %sila
-        d(1) = randn(1)*1.5;
+        d(1) = randn(1)*.5;
         d1T = randn(1)*100;
         d1t = 0;
         d1a = 1;
@@ -130,7 +132,7 @@ for k = 1:simulationTime/dt
     end
     
     if rand(1) > 0.99      %moment
-        d(2) = randn(1)*1.5;
+        d(2) = randn(1)*.5;
         d2T = randn(1)*100;
         d2t = 0;
         d2a = 1;
@@ -174,12 +176,12 @@ for k = 1:simulationTime/dt
     xe = Xs(k,:)' - X_operating';
     y = Y(k, :)';
     yError = y - C*xe;
-    dxeA = KF.A*xe;
+    %dxeA = KF.A*xe;
     %dxeB = KF.B * [Wrel'; yError];
-    dxeBW = KF.B(:, 1:4)*Wrel';
-    dxeBYERROR = KF.B(:, 5:6)*yError;
-    Dxe = (dxeA + dxeBW + dxeBYERROR)*dt;
-    Xest(k+1, :) = xe+Dxe; 
+    %dxeBW = KF.B(:, 1:4)*Wrel';
+    %dxeBYERROR = KF.B(:, 5:6)*yError;
+    dxe = KF.A*xe + KF.B*[Wrel'; yError];
+    Xest(k+1, :) = xe+dxe*dt; 
        % Xest are coords relative to X_operating
 
     %% Simulace
@@ -193,10 +195,16 @@ for k = 1:simulationTime/dt
         Xs(k,3) = -abs(Xs(k,3)*0);
         Xs(k,1) = 1;
         disp("bonk")
+        if(bonked_k==-1)    
+            bonked_k = k;
+        end
     elseif(Xs(k,1)<-1)
         Xs(k,3) = +abs(Xs(k,3)*0);
         Xs(k,1) = -1;
         disp("bonk")
+        if(bonked_k==-1)
+            bonked_k = k;
+        end
     end
     
 	Xs(k+1,:) = xs(end,:);
@@ -206,7 +214,7 @@ for k = 1:simulationTime/dt
     D(k+1, :) = d;
     
     % mereni Y
-    Y(k+1, :) = C * xs(end,:)' + [randn(1)*10 randn(1)*1]' - X_operating(1:2)';
+    Y(k+1, :) = C * xs(end,:)' + [randn(1)*0.1 randn(1)*0.1]' - X_operating(1:2)';
     
     
     %% Vizualizace
@@ -214,12 +222,12 @@ for k = 1:simulationTime/dt
     
     %refresh plotu
     if(mod(k+1,kRefreshPlot)==1)
-        plotRefresh(Ts,Xs,Xest+X_operating,Wx,U,D,Y,k,kRefreshPlot);
+        %plotRefresh(Ts,Xs,Xest+X_operating,Wx,U,D,Y,k,kRefreshPlot);
     end
     
     %refresh animace
     if(mod(k,kRefreshAnim)==0)
-        %animRefresh(Ts,Xs,W,k);
+        %animRefresh(Ts,Xs,Wx,k);
     end
       
     %progress meter a vypocetni cas na 1000 vzorku
@@ -228,8 +236,23 @@ for k = 1:simulationTime/dt
         disp(k + "/" + simulationTime/dt);
         tic
     end
+    
+    if(bonked_k ~= -1)
+        k_afterBonk = k_afterBonk + 1;
+    end
+    
+    if k_afterBonk>1000
+        break
+    end
 end
 
 sol.X = Xs
+sol.Xest = Xest
 sol.T = Ts
 sol.U = U
+sol.Wx = Wx
+sol.D = D
+sol.Y = Y
+sol.bonked_k = bonked_k
+
+save('Results1.mat', 'sol');

@@ -1,4 +1,4 @@
-function [] = animRefresh(Ts, Xs, W, k)
+function [] = animRefresh(Ts, Xs, Wx, k)
     
     figure(2);
     % animaci lze zrychlit pomocí úpravy kroku, nap?. p?i 1:3:rows_ se
@@ -24,7 +24,7 @@ function [] = animRefresh(Ts, Xs, W, k)
             'LineWidth', 2,...
             'Marker', '*');
         
-        plot(W(1), 0.45, 'bO');
+        plot(Wx(k,1), 0.45, 'bO');
 
         drawnow
     end

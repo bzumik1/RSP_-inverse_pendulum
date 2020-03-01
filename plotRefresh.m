@@ -26,10 +26,6 @@ figure(1);
     plot(time, Xest(k-Ka:k, 2), "LineWidth", 2, 'LineStyle', ':', 'Color', 'r');
 %     xlabel('Time t [$s$]','interpreter','latex')
      xlim(xlims);
-
-%     ylabel('$\alpha$ [$rad$]', 'Interpreter', 'Latex')
-%     title('$\alpha$', 'Interpreter', 'Latex')
-     xlim(xlims);
     
     subplot(223);
     hold on
