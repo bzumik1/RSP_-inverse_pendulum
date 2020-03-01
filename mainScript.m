@@ -1,42 +1,30 @@
+%%  Zadané hodnoty
 clc
 clear all 
 close all
+addpath('functions') % toto pøidá slo¾ku functions do prohlédávaných
 
-eta_g = 0.9; %gearbox efficiency
-K_g = 3.71; %gearbox gear ratio
-k_t = 7.68e-3; %motor current-torque constant
-k_m = 7.68e-3; %motor back-emf constant
-R_m = 2.6; %motor armature resistance
-r_mp = 6.35e-3; %motor pinion radius (prumer pastorku)
-eta_m = 0.69; %motor efficiency
-J_p = 1.2e-3; %moment of inertia about CoM, medium length pendulum
-L_p = 0.3365; %full length of the pendulum
-l_p = L_p/2;
-M_p = 0.127; %pendulum mass
-%J_p = J_pCoM + M_p * l_p^2
-M_c = 0.38; %cart mass
-J_m = 3.9e-7; %motor moment of inertia
-J_eq = M_c + eta_g*K_g^2*J_m/r_mp^2;
-B_eq = 4.3; %equivalent viscous damping coefficient (cart)
-B_p = 0.0024; %equivalent viscous damping coefficient (pendulum)
-g = 9.81;
+%vytvoøení struct pro v¹echny zadané hodnoty systému
 
-    p.B_eq = B_eq;
-    p.B_p = B_p;
-    p.J_eq = J_eq;
-    p.J_p = J_p;
-    p.K_g = K_g;
-    p.M_p = M_p;
-    p.R_m = R_m;
-    p.eta_g = eta_g;
-    p.eta_m = eta_m;
-    p.g = g;
-    p.k_m = k_m;
-    p.k_t = k_t;
-    p.l_p = l_p;
-    p.r_mp = r_mp;
+p.B_eq = 4.3; %equivalent viscous damping coefficient (cart)
+p.B_p = 0.0024; %equivalent viscous damping coefficient (pendulum)
+p.J_p = 1.2e-3; %moment of inertia about CoM, medium length pendulum
+p.K_g = 3.71; %gearbox gear ratio
+p.M_p = 0.127; %pendulum mass
+p.R_m = 2.6; %motor armature resistance
+p.eta_g = 0.9; %gearbox efficiency
+p.eta_m = 0.69; %motor efficiency
+p.g = 9.81;
+p.k_m = 7.68e-3; %motor back-emf constant
+p.k_t = 7.68e-3; %motor current-torque constant
+p.L_p = 0.3365; %full length of the pendulum
+p.l_p = p.L_p/2; % the centre of mass of the pendulum
+p.r_mp = 6.35e-3; %motor pinion radius (prumer pastorku)
+p.M_c = 0.38; %cart mass
+p.J_m = 3.9e-7; %motor moment of inertia
+p.J_eq = p.M_c + p.eta_g*p.K_g^2*p.J_m/p.r_mp^2;
 %%  Navrh regulatoru
-    %stavovy bod pro linearizaci
+    %X_operating je stavovy bod pro linearizaci
     X_operating = [0 pi 0 0];
     [A,B,C,D] = ABCD(X_operating, 0, p)
     
@@ -67,7 +55,7 @@ g = 9.81;
 
 %% Nastaveni pocatecnich hodnot
 %pocatecni stav
-X = [0, pi, 0, 0]; %alpha, Dalpha, xc, Dxc
+X = [0, pi, 0, 0]; %alpha, dAlpha, xc, dXc
 %pozadovany stav
 W = [0, pi, 0, 0];
 Wrel = W - X_operating;
@@ -246,13 +234,16 @@ for k = 1:simulationTime/dt
     end
 end
 
-sol.X = Xs
-sol.Xest = Xest
-sol.T = Ts
-sol.U = U
-sol.Wx = Wx
-sol.D = D
-sol.Y = Y
-sol.bonked_k = bonked_k
+sol.X = Xs;
+sol.Xest = Xest;
+sol.T = Ts;
+sol.U = U;
+sol.Wx = Wx;
+sol.D = D;
+sol.Y = Y;
+sol.bonked_k = bonked_k;
+
+%vytiskne øe¹ení
+sol
 
 save('Results1.mat', 'sol');
