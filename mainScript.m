@@ -63,9 +63,9 @@ Wrel = W - X_operating;
 %nastaveni solveru
 options = odeset();
 
-simulationTime = 1e4;
+simulationTime = 1e2;
 dt = 0.02; %samplovaci perioda
-kRefreshPlot = 10; %vykresluje se pouze po kazdych 'kRefreshPlot" samplech
+kRefreshPlot = 100; %vykresluje se pouze po kazdych 'kRefreshPlot" samplech
 kRefreshAnim = 5; % ^
 
 %predalokace poli pro data
@@ -94,6 +94,7 @@ bonked_k = -1;
 k_afterBonk = 0;
 
 %% Simulace
+hbar = waitbar(0,'Simulation Progress');
 tic
 disp("1000 samples = " + 1000*dt + "s");
 for k = 1:simulationTime/dt
@@ -210,12 +211,12 @@ for k = 1:simulationTime/dt
     
     %refresh plotu
     if(mod(k+1,kRefreshPlot)==1)
-        %plotRefresh(Ts,Xs,Xest+X_operating,Wx,U,D,Y,k,kRefreshPlot);
+        plotRefresh(Ts,Xs,Xest+X_operating,Wx,U,D,Y,k,kRefreshPlot);
     end
     
     %refresh animace
     if(mod(k,kRefreshAnim)==0)
-        %animRefresh(Ts,Xs,Wx,k);
+        animRefresh(Ts,Xs,Wx,k);
     end
       
     %progress meter a vypocetni cas na 1000 vzorku
@@ -232,7 +233,11 @@ for k = 1:simulationTime/dt
     if k_afterBonk>1000
         break
     end
+    
+    waitbar(k*dt/simulationTime,hbar);
 end
+
+close(hbar);
 
 sol.X = Xs;
 sol.Xest = Xest;
