@@ -1,15 +1,22 @@
-# Inverzní kyvadlo
+# Inverzní kyvadlo - semestrální práce ŘSP
+__Krystof Bystricky a Jakub Znamenáček__
 
-# mainScript.m
+##Odkazy na potřebné soubory
+###Domácí stránka projektu
+- https://www.quanser.com/products/linear-servo-base-unit-inverted-pendulum/
+###SIMULINK COURSEWARE - odkaz přímo na soubory
+- https://quanserinc.box.com/shared/static/gu9ed72edso2r2bfbtlyi3k6m2kgq0ie.zip
+
+## mainScript.m
 Tento skript je je hlavním skriptem celého projektu
 
-# model_sym.mlx
+## model_sym.mlx
 Tento live script slouží k odvození symbolických nelineárních stavových rovnic soustavy pro funkci pendulumCart.m a symbolických Jakobiánů pro linearizovaný popis soustavy pro skript ABCD.m
 
-# CoursewareResources
+## CoursewareResources
 Tato složka obsahuje všechny soubory týkající se projektu
 
-# Funkce
+## Funkce
 Všechny funkce použité v hlavním skriptu jsou ve složce functions. 
 
 - ABCD.m
