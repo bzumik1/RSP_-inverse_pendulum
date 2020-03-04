@@ -1,10 +1,10 @@
 # Inverzní kyvadlo - semestrální práce ŘSP
 __Krystof Bystricky a Jakub Znamenáček__
 
-##Odkazy na potřebné soubory
-###Domácí stránka projektu
+## Odkazy na potřebné soubory
+### Domácí stránka projektu
 - https://www.quanser.com/products/linear-servo-base-unit-inverted-pendulum/
-###SIMULINK COURSEWARE - odkaz přímo na soubory
+### SIMULINK COURSEWARE - odkaz přímo na soubory
 - https://quanserinc.box.com/shared/static/gu9ed72edso2r2bfbtlyi3k6m2kgq0ie.zip
 
 ## mainScript.m
