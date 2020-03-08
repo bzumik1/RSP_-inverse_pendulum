@@ -25,7 +25,7 @@ p.J_m = 3.9e-7; %motor moment of inertia
 p.J_eq = p.M_c + p.eta_g*p.K_g^2*p.J_m/p.r_mp^2;
 %%  Navrh regulatoru
     %X_operating je stavovy bod pro linearizaci
-    X_operating = [-0.4 pi 0 0];
+    X_operating = [0 pi 0 0];
     [A,B,C,D] = ABCD(X_operating, 0, p)
     
 nx = 4;
@@ -35,32 +35,33 @@ nlobj = nlmpc(nx, ny, nu);
 
 nlobj.PredictionHorizon = 10;
 nlobj.ControlHorizon = 5;
-dt = 0.1;
-nlobj.Ts = dt;
+Ts = 0.1;
+nlobj.Ts = Ts;
 
-nlobj.Model.StateFcn = @(X, u) pendulumCart(X ,u ,[0 0],p);
-nlobj.Jacobian.StateFcn = @(X, u) ABCD(X, u, p);
-nlobj.Model.IsContinuousTime = true;
-nlobj.Model.NumberOfParameters = 0;
-nlobj.Model.OutputFcn = @(X, u) [X(1); sawtooth(X(2), 0.5)];
+nlobj.Model.StateFcn = @(X, u, Ts) pendulumCartD(X,u,[0 0],Ts,p);
+%nlobj.Jacobian.StateFcn = @(X, u, Ts) ABCD(X, u, p)
+nlobj.Model.IsContinuousTime = false;
+nlobj.Model.NumberOfParameters = 1;
+nlobj.Model.OutputFcn = @(X, u, Ts) [X(1); sawtooth(X(2), 0.5)];
 %nlobj.Jacobian.OutputFcn = @(X, u) [1 0 0 0; 0 -sin(X(2)) 0 0];
 
-nlobj.Weights.OutputVariables = [8 4];
-%nlobj.Weights.ManipulatedVariablesRate = 0.1;
+nlobj.Weights.OutputVariables = [0 4];
+nlobj.Weights.ManipulatedVariablesRate = 0.01;
 
 nlobj.OV(1).Min = -0.5;
 nlobj.OV(1).Max = 0.5;
 
-nlobj.MV.Min = -20;
-nlobj.MV.Max = 20;
+nlobj.MV.Min = -12;
+nlobj.MV.Max = 12;
 
 nlobj.Optimization.UseSuboptimalSolution = true;
 nlobj.Optimization.SolverOptions.Algorithm = 'sqp';
-nlobj.Optimization.SolverOptions.MaxIter = 12;
+nlobj.Optimization.SolverOptions.MaxIter = 8;
 
+nloptions = nlmpcmoveopt;
+nloptions.Parameters = {Ts};
 
-
-validateFcns(nlobj, X_operating, 0, [])
+validateFcns(nlobj, X_operating, 0, [], {Ts})
 
 %% Navrh EKF
 
@@ -75,24 +76,24 @@ X = [0, 0, 0, 0]; %alpha, dAlpha, xc, dXc
 %nastaveni solveru
 options = odeset();
 
-simulationTime = 5;
-dt = dt; %samplovaci perioda
+simulationTime = 12;
+Ts = Ts; %samplovaci perioda
 kRefreshPlot = 100; %vykresluje se pouze po kazdych 'kRefreshPlot" samplech
 kRefreshAnim = 1; % ^
 
 %predalokace poli pro data
-Xs = zeros(simulationTime/dt, 4); %skutecny stav
+Xs = zeros(simulationTime/Ts, 4); %skutecny stav
 Xs(1,:) = X;
-Ts = zeros(simulationTime/dt, 1);   %cas
-U = zeros(simulationTime/dt, 1);   %vstupy
+Td = zeros(simulationTime/Ts, 1);   %cas
+U = zeros(simulationTime/Ts, 1);   %vstupy
 U(1) = 0;
-D = zeros(simulationTime/dt, 2); %poruchy
-Y = zeros(simulationTime/dt, 2); %mereni
+D = zeros(simulationTime/Ts, 2); %poruchy
+Y = zeros(simulationTime/Ts, 2); %mereni
 Y(1,:) = X(1, 1:2);
-computingTimes = zeros(simulationTime/dt, 1);
+computingTimes = zeros(simulationTime/Ts, 1);
 Xc = X;
 Tc = [];
-%INFO = zeros(simulationTime/dt, 1);
+%INFO = zeros(simulationTime/Ts, 1);
 
 d = [0 0];
 d1T = 0;
@@ -112,8 +113,8 @@ k_afterBonk = 0;
 %% Simulace
 %hbar = waitbar(0,'Simulation Progress');
 tic
-disp("1000 samples = " + 1000*dt + "s");
-for k = 1:simulationTime/dt
+disp("1000 samples = " + 1000*Ts + "s");
+for k = 1:simulationTime/Ts
     X = Xs(k,:);
 %     %% Poruchy
 %     if rand(1) > 0.90      %sila
@@ -151,10 +152,10 @@ for k = 1:simulationTime/dt
 %         end
 %     end
     %% Generovani pozadovaneho stavu
-    T = k*dt;
+    T = k*Td;
     if( T == 0 )
         yref = yref1;
-    elseif ( T >= 2.6)
+    elseif ( T >= 8)
         yref = yref2;
     end
     
@@ -163,9 +164,9 @@ for k = 1:simulationTime/dt
     %% Regulace
     tic
     
-    [u, nloptions, info] = nlmpcmove(nlobj, Xs(k,:), U(k), yref, []);
+    [u, nloptions, info] = nlmpcmove(nlobj, Xs(k,:), U(k), yref, [], nloptions);
     %INFO(k) = info;
-%    predict(EKF, [u; dt]);    
+%    predict(EKF, [u; Ts]);    
     figure(4)
     subplot(321)
     plot(info.Topt, info.Xopt(:,1), 'bo-');
@@ -185,16 +186,16 @@ for k = 1:simulationTime/dt
         
     computingTimes(k) = toc;
     disp("Computing time: " + computingTimes(k))
-    disp(k + "/" + simulationTime/dt);
+    disp(k + "/" + simulationTime/Ts);
 
     %% Simulace
     
-    %"spojite" reseni v intervalu dt, uklada se pouze konecny stav 
-    [ts, xs] = ode45(@(t, X) pendulumCart(X,u,d,p), [(k-1)*dt k*dt], X, options);
+    %"spojite" reseni v intervalu Ts, uklada se pouze konecny stav 
+    [ts, xs] = ode45(@(t, X) pendulumCart(X,u,d,p), [(k-1)*Ts k*Ts], X, options);
 
 	Xs(k+1,:) = xs(end,:);
     Xs(k+1, 2) = mod(Xs(k+1, 2), 2*pi);
-    Ts(k+1) = ts(end);
+    Td(k+1) = ts(end);
     U(k+1) = u;
     %Wx(k+1) = W(1);
     D(k+1, :) = d;
@@ -215,13 +216,13 @@ for k = 1:simulationTime/dt
     
     %refresh animace
     if(mod(k,kRefreshAnim)==0)
-        animRefresh(Ts,Xs,[],k);
+        animRefresh(Xs(k, :),[]);
     end
       
     %progress meter a vypocetni cas na 1000 vzorku
 %     if (mod(k,1)==0) 
 %         disp("Computing time: " + toc)
-%         disp(k + "/" + simulationTime/dt);
+%         disp(k + "/" + simulationTime/Ts);
 %         tic
 %     end
     
@@ -233,14 +234,14 @@ for k = 1:simulationTime/dt
         break
     end
     
-    %waitbar(k*dt/simulationTime,hbar);
+    %waitbar(k*Ts/simulationTime,hbar);
 end
 
 %close(hbar);
 
 sol.X = Xs;
 %sol.Xest = Xest;
-sol.T = Ts;
+sol.T = Td;
 sol.U = U;
 sol.D = D;
 sol.Y = Y;
@@ -255,6 +256,6 @@ sol.computingTimes = computingTimes;
 sol
 
     figure('Name', 'Computing times')
-    bar(Ts(1:end-1), computingTimes);
+    bar(Td(1:end-1), computingTimes);
 
 save('ResultsMPC10.mat', 'sol');
