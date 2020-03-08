@@ -175,7 +175,7 @@ for k = 1:simulationTime/dt
     %% Simulace
     
     %"spojite" reseni v intervalu dt, uklada se pouze konecny stav 
-    [ts, xs] = ode45(@(t, X) pendulumCart(X,u,d,p), [(k-1)*dt k*dt], X, options);
+    [ts, xs] = ode45(@(t, X) pendulumCart(X,u,d,A,B), [(k-1)*dt k*dt], X, options);
     
     %mezni polohy xc <-1 1>
     %po odrazu je velikost rychlosti 10% rychlosti pred narazem
