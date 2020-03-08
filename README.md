@@ -15,7 +15,7 @@ Tento live script slouží k odvození symbolických nelineárních stavových r
 Tato složka obsahuje všechny soubory týkající se projektu
 
 ## functions
-- Obsahuje všechny uživatelsky vytvořené funkce použité v projektu. 
+Obsahuje všechny uživatelsky vytvořené funkce použité v projektu. 
 * __columnMatrixRearrange.m__
 	* Prohodí pořadí řádků ve sloupcovém vektoru.
 * __ABCD.m__
