@@ -1,4 +1,5 @@
-function [A,B,C,D] = ABCD(X, u, p)
+%Vraci matice linearizovaneho systemu v danem bode
+function [A,B,C,D] = ABCD_sym(X, u, p)
     %Zde dojede k nacteni vsech potrebnych parametru z p
     B_eq = p.B_eq;
     B_p = p.B_p;
