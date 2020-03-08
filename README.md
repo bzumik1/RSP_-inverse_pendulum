@@ -16,14 +16,14 @@ Tato složka obsahuje všechny soubory týkající se projektu
 
 ## functions
 - Obsahuje všechny uživatelsky vytvořené funkce použité v projektu. 
-1. __columnMatrixRearrange.m__
-- Prohodí pořadí řádků ve sloupcovém vektoru.
-1. __ABCD.m__
-- function [A,B,C,D] = ABCD(X, u, p)
-- Vrací linearizovaný popis soustavy ve stavové formulaci. Vstupem do funkce je stavový bod 'X', ve kterém chceme linearizovat; skalární akční veličina 'u', a struct 'p' s parametry soustavy.
-1. __animRefresh.m__
-- Vykreslí snímek animace. Na vstupu je stav 'Xs' a požadovaný stav 'Wx'.
-1. __pendulumCart.m__
-- Vrací časovou derivaci 'dX/dt' pro daný stavový bod 'X', vstupní veličinu 'u' a poruchovou veličinu 'd'. 
-1. __plotRefresh.m__
-- Vykreslí snímek grafu.
+* __columnMatrixRearrange.m__
+	* Prohodí pořadí řádků ve sloupcovém vektoru.
+* __ABCD.m__
+	* function [A,B,C,D] = ABCD(X, u, p)
+	* Vrací linearizovaný popis soustavy ve stavové formulaci. Vstupem do funkce je stavový bod 'X', ve kterém chceme linearizovat; skalární akční veličina 'u', a struct 'p' s parametry soustavy.
+* __animRefresh.m__
+	* Vykreslí snímek animace. Na vstupu je stav 'Xs' a požadovaný stav 'Wx'.
+* __pendulumCart.m__
+	* Vrací časovou derivaci 'dX/dt' pro daný stavový bod 'X', vstupní veličinu 'u' a poruchovou veličinu 'd'. 
+* __plotRefresh.m__
+	* Vykreslí snímek grafu.
