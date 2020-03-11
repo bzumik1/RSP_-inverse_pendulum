@@ -2,10 +2,9 @@
 clc
 clear all 
 close all
-addpath('functions') % toto pøidá slo¾ku functions do prohlédávaných
+addpath('functions') % toto prida slozku uzivatelsky vytvorenych funkci "functions" do prohledavanych
 
-%vytvoøení struct pro v¹echny zadané hodnoty systému
-
+%vytvoreni struktury pro vsechny zadane hodnoty systemu
 p.B_eq = 4.3; %equivalent viscous damping coefficient (cart)
 p.B_p = 0.0024; %equivalent viscous damping coefficient (pendulum)
 p.J_p = 1.2e-3; %moment of inertia about CoM, medium length pendulum
@@ -248,7 +247,7 @@ sol.D = D;
 sol.Y = Y;
 sol.bonked_k = bonked_k;
 
-%vytiskne øe¹ení
+%vytiskne reseni
 sol
 
 save('Results1.mat', 'sol');
