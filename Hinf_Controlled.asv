@@ -4,6 +4,7 @@ clear all
 close all
 addpath('functions') % toto pøidá slo¾ku functions do prohlédávaných
 
+p = getParameters();
 % initializeModel();
 
 %% Linearizace v pracovním bod?
@@ -19,41 +20,44 @@ P.y = 'y';
 
 %% Struktura regulátoru
 C0 = tunableGain('C0',1,4);
-C0.u = 'e';
+C0.u = {'e(1)', 'e(2)', 'e(3)', 'e(4)'};
 C0.y = 'u';
 %% Váhové filtry   
 W1 = 1/makeweight(10,1,0.5);
 W2 = 1/makeweight(0.1,[32 0.32],1);
 W3 = 1/makeweight(0.5,1,10);
 
-W1.u = 'e';
+W1.u = 'e(2)';
 W1.y = 'z1';
 W2.u = 'u';
 W2.y = 'z2';
-W3.u = 'y';
+W3.u = 'y(2)';
 W3.y = 'z3';
 
 %% Vytvoreni struktury
 
-Sum = sumblk('e = w - y');
+Sum = sumblk('e = w - y', 4);
 CL0 = connect(P, C0, Sum, ...
     W1, W2, W3, ...
     {'w'}, {'z1', 'z2', 'z3'});
 
 rng('shuffle')
-synthesisOptions = hinfstructOptions('Display','final','RandomStart',20);
-[CL, gamma] = hinfstruct(CL0, opt);
-K = getBlockValue(CL, 'C');
+synthesisOptions = hinfstructOptions('Display','final','RandomStart',5);
+[CL, gamma] = hinfstruct(CL0, synthesisOptions);
+K = getBlockValue(CL, 'C0');
 
 showTunable(CL);
 ls = loopsens(P,K);
 
-sigma(ls.Si,'b',ls.OL,'r',ls.T,'g',gamma/W1,'b-.',gamma/W2,'r-.',gamma/W3,'g-.',{1e-3,1e3})
+sigma(ls.Si,'b',ls.Li,'r',ls.Ti,'g',gamma/W1,'b-.',gamma/W2,'r-.',gamma/W3,'g-.',{1e-3,1e3})
 legend('S','KS','T','GAM/W1','GAM/W2','GAM/W3','Location','SouthWest')
 grid
 
-dt = 0.01; % perioda regulatoru
-K = c2d(K,dt);
+K_hinf = K.D;
+
+Areg = (A-B*K);
+Areg = do
+
 
 %% Navrh estimatoru
 
@@ -69,7 +73,7 @@ Wrel = W - X_operating;
 options = odeset();
 
 simulationTime = 15;
-dt = dt; %samplovaci perioda
+dt = 0.01; %samplovaci perioda
 kRefreshPlot = 100; %vykresluje se pouze po kazdych 'kRefreshPlot" samplech
 kRefreshAnim = 5; % ^
 
@@ -102,9 +106,6 @@ d2T = 0;
 d2t = 0;
 d2a = 0;
 
-yref1 = [0 1];
-yref2 = [0 -1];
-yref = yref1;
 %% Simulace
 hbar = waitbar(0,'Simulation Progress');
 tic
@@ -157,13 +158,11 @@ for k = 1:simulationTime/dt
     %% Estimace stavu X; pouziti mereni pro korekci predpovedi
 
     %% Regulace
-    u = K.C * Xr(k,:)';
-    Xr(k+1,:) = K.A * Xr(k,:)' + K.B * (Wrel'-Xs(k,:)');
-    %u = min(12, max(-12, u));
+    u = -K_hinf*(Wrel-Xs(k,:))'
     %% Simulace
     
     %"spojite" reseni v intervalu dt, uklada se pouze konecny stav 
-    [ts, xs] = ode45(@(t, X) pendCartC_d(Xs(k,:)',u, d'), [(k-1)*dt k*dt], Xs(k,:), options);
+    [ts, xs] = ode45(@(t, X) pendulumCart_symbolicPars(X,u,d,p), [(k-1)*dt/10 k*dt/10], Xs(k,:), options);
 
 	Xs(k+1,:) = xs(end,:);
     Ts(k+1) = ts(end);
