@@ -5,98 +5,86 @@ close all
 addpath('functions') % toto pøidá slo¾ku functions do prohlédávaných
 
 p = getParameters();
+s = tf('s');
 % initializeModel();
 
-%% Linearizace v pracovním bod?
-X_operating = [0 pi 0 0];
-[A, B] = AB(X_operating', 0);
-C = eye(4,4);
-C_real = [1 0 0 0; 0 1 0 0];
-D = [0; 0; 0; 0];
+%%  Model
+    X_operating = [0 0 0 0]';
+    [A, B] = AB(X_operating, 0);
+    Co = [1 0 0 0; 0 0 1 0]; % observed outputs | measuring xc and alpha
+    Cr = [1 0 0 0]; % reference outputs
+    Cf = eye(4); % fully observed outputs
+    D = [0; 0];
+    Df = [0;0;0;0];
 
-P = ss(A,B,C,D); %plant
-P.u = 'u';
-P.y = 'y';
+    P = ss(A,B,Co,D); %plant
+    Po = ss(A,B,Cf,Df); %fully observed plant
 
-%% Struktura regulátoru
-C0 = tunableGain('C0',1,4);
-C0.u = {'e(1)', 'e(2)', 'e(3)', 'e(4)'};
-C0.y = 'u';
 %% Váhové filtry   
-W1 = 1/makeweight(10,1,0.5);
-W2 = 1/makeweight(0.1,[32 0.32],1);
-W3 = 1/makeweight(0.5,1,10);
+W1 = 1/makeweight(100,[10 1],0.1);
+W2 = 0*s + 0.1;
+W3 = 1/makeweight(0.1,[10 1],100);
+%% Synteza H-inf kontroleru
+[K,CL,gamma] = mixsyn(Po,W1,W2,W3);
 
-W1.u = 'e(2)';
-W1.y = 'z1';
-W2.u = 'u';
-W2.y = 'z2';
-W3.u = 'y(2)';
-W3.y = 'z3';
+loopsens_ = loopsens(Po,K);
+S = loopsens_.Si;
+T = loopsens_.Ti;
 
-%% Vytvoreni struktury
-
-Sum = sumblk('e = w - y', 4);
-CL0 = connect(P, C0, Sum, ...
-    W1, W2, W3, ...
-    {'w'}, {'z1', 'z2', 'z3'});
-
-rng('shuffle')
-synthesisOptions = hinfstructOptions('Display','final','RandomStart',5);
-[CL, gamma] = hinfstruct(CL0, synthesisOptions);
-K = getBlockValue(CL, 'C0');
-
-showTunable(CL);
-ls = loopsens(P,K);
-
-sigma(ls.Si,'b',ls.Li,'r',ls.Ti,'g',gamma/W1,'b-.',gamma/W2,'r-.',gamma/W3,'g-.',{1e-3,1e3})
-legend('S','KS','T','GAM/W1','GAM/W2','GAM/W3','Location','SouthWest')
-grid
-
-K_hinf = K.D;
-
-Areg = (A-B*K_hinf);
-
-
+[svH, wH] = sigma(S);
+Ms = max(svH(1,:));
+[svH, wH] = sigma(T);
+Mt = max(svH(1,:));
+fprintf("Ms = %f dB \n Mt = %f dB\n",mag2db(Ms), mag2db(Mt));
+%%
+figure
+p = sigmaplot(S,'b',T,'g',K*S,'r',gamma/W1, 'b-.',gamma/W2,'r-.', gamma/W3, 'g-.');
+popt = getoptions(p);
+popt.Title.String = 'Sensitivity functions';
+popt.Grid = 'on';
+setoptions(p,popt)
+legend("S", "Gamma/W1", "T", "Gamma-inverted Weight 3");
 
 %% Navrh estimatoru
+    %observability check
+    obsv_ = obsv(A,Co);
+    obsvr = rank(obsv_);
 
+    % process noise covariance matrix
+    Vd = diag([5 10 5 10]);
+    % noise covariance matrix
+    Vn = [0.02 0; 0 0.05];
+    
+    L = lqe(A,Vd,Co,Vd,Vn);
+    
+    Cf = eye(4);
+    KF = ss((A-L*Co), [B L], eye(4), 0);
 
 %% Nastaveni pocatecnich hodnot
 %pocatecni stav
-X = [0 pi 0 0]; %alpha, dAlpha, xc, dXc
-
-W = [0, pi, 0, 0];
-Wrel = W - X_operating;
-
-%nastaveni solveru
-options = odeset();
+X0 = [0,0,pi*2/16,0]'; %x, alpha, dx, dalpha
+r = 0; %reference
 
 simulationTime = 15;
-dt = 0.01; %samplovaci perioda
-kRefreshPlot = 100; %vykresluje se pouze po kazdych 'kRefreshPlot" samplech
-kRefreshAnim = 5; % ^
+dt = 0.005; %samplovaci perioda
 
 %predalokace poli pro data
-Xs = zeros(simulationTime/dt, 4); %skutecny stav plantu
-Xs(1,:) = X;
-
-Xr = zeros(simulationTime/dt, 13); %stav regulatoru
-
-Ts = zeros(simulationTime/dt, 1);   %cas
-
-U = zeros(simulationTime/dt, 1);   %vstupy
+X = zeros(4, simulationTime/dt); %skutecny stav
+X(:,1) = X0;
+Xest = zeros(4,simulationTime/dt); %estimovany stav
+Xest(:,1) = X0 - X_operating;
+T = zeros(1,simulationTime/dt);   %spojity cas
+U = zeros(1,simulationTime/dt);   %vstupy
 U(1) = 0;
-D = zeros(simulationTime/dt, 2); %poruchy
-
-Y = zeros(simulationTime/dt, 2); %mereni
-Y(1,:) = X(1, 1:2);
-
+UX = zeros(length(K.A), simulationTime/dt); %vnitrni stav kontroleru
+u = 0;
+R = zeros(1,simulationTime/dt); %reference r
+R(1) = r;
+D = zeros(2,simulationTime/dt); %poruchy
+Y = zeros(2,simulationTime/dt); %mereni
+Y(:,1) = X0(1:2) - X_operating(1:2);
 
 computingTimes = zeros(simulationTime/dt, 1);
-Xc = X;
-Tc = [];
-%INFO = zeros(simulationTime/dt, 1);
 
 d = [0 0];
 d1T = 0;
@@ -111,90 +99,69 @@ hbar = waitbar(0,'Simulation Progress');
 tic
 disp("1000 samples = " + 1000*dt + "s");
 for k = 1:simulationTime/dt
-    %% Generovani pozadovaneho stavu
-    if rand(1) > 0.99      
-        W = [(2*rand(1)-1)*0.50, pi, 0, 0];
-        %W = [sign(2*rand(1)-1)*0.9, pi, 0, 0];
-        %W = [sin(pi/16*k*dt), pi, 0, 0];
-        Wrel = W - X_operating;
-    end
+    
+    % Generovani pozadovane reference
+%     if rand(1) > 0.999      
+%         r = (2*rand(1)-1)*0.50;
+%     end         
 
-    %% Generovani poruchy
-    if rand(1) > 0.99      %sila
-        d(1) = randn(1)*.5;
-        d1T = randn(1)*10;
-        d1t = 0;
-        d1a = 1;
-        %disp("Porucha d1")
-        %disp(d(1))
-        %disp(d1T)
-    end
-    
-    if rand(1) > 0.99      %moment
-        d(2) = randn(1)*.5;
-        d2T = randn(1)*10;
-        d2t = 0;
-        d2a = 1;
-        %disp("Porucha d2")
-        %disp(d(2))
-        %disp(d2T)
-    end
-    
-    if d1a==1
-        d1t = d1t + 1;
-        if (d1t >= d1T)
-            d(1) = 0;
-        end
-    end
-    
-    if d2a==1
-        d2t = d2t + 1;
-        if (d2t >= d2T)
-            d(2) = 0;
-            d2a = 0;
-        end
-    end
-    
-    %% Estimace stavu X; pouziti mereni pro korekci predpovedi
-
+    %% Estimace stavu X
+    y_est = Co * X(:,k);
+    y_msr = Y(:,k);
+    y_err = y_msr - y_est;
+    Dxe = KF.A*Xest(:,k) + KF.B*[u ;y_msr];
+%     disp("est: " + y_est + "  msr: " + y_msr + "  y_err: " + y_err)
+    Xest(:,k+1) = Xest(:,k) + Dxe*dt; % Euler method
     %% Regulace
-    u = -K_hinf*(Wrel-Xs(k,:))'
-    %% Simulace
+    w = [r 0 0 0]';
+    e = -X(:,k);
+    t = linspace(k*dt, (k+1)*dt);
+    [utmp, t, UXtmp] = lsim(K,e'.*ones(length(t),4),t, UX(:,k));
+    UX(:,k+1) = UXtmp(end);
+%     Dux = K.A*UX(:,k) + K.B*e;
+%     UX(:,k+1) = UX(:,k) + Dux*dt;
+    u = utmp(end);
+    u = min(12, max(-12, u));
+   %% Simulace
     
     %"spojite" reseni v intervalu dt, uklada se pouze konecny stav 
-    [ts, xs] = ode45(@(t, X) pendulumCart_symbolicPars(X,u,d,p), [(k-1)*dt/10 k*dt/10], Xs(k,:), options);
-
-	Xs(k+1,:) = xs(end,:);
-    Ts(k+1) = ts(end);
-    U(k+1) = u;
-    %Wx(k+1) = W(1);
-    D(k+1, :) = d;
-    Xc = [Xc; xs];
-    Tc = [Tc; ts];
+    [ts, xs] = ode45(@(t, X_) pendCartC_d(X(:,k),u,d'), [(k-1)*dt k*dt], X(:,k));
     
-    %% Mereni a predikce EKF
-    Y(k+1, :) = C_real * xs(end,:)' + [randn(1)*0.001 randn(1)*0.01]';  
+    X(:,k+1) = xs(end,:)';
+    T(k+1) = ts(end);
+    R(k+1) = r;
+    U(k+1) = u;
+    
+    % mereni Y
+%         Y(:,k+1) = Co * xs(end,:)' + [ 0.02*sqrt(Vn(1,1))*randn(1), 0.003*sqrt(Vn(2,2))*randn(1) ]' ...
+%                - [X_operating(1), X_operating(3)]';
+    Y(:,k+1) = Co * xs(end,:)' - [X_operating(1), X_operating(3)]';
 
-    waitbar(k*dt/simulationTime,hbar);
+        
+
+    %% Vizualizace
+     
+    %progress meter a vypocetni cas na 1000 vzorku
+    if (mod(k,1000)==0) 
+        disp("Computing time: " + toc)
+        disp(k + "/" + simulationTime/dt);
+        tic
     end
+
+    waitbar(k*dt/simulationTime,hbar);   
+end
 
 close(hbar);
 
-sol.X = Xs;
-% sol.Xest = Xest;
-sol.T = Ts;
+sol.X = X;
+sol.R = R;
+sol.Xest = Xest+X_operating;
+sol.T = T;
 sol.U = U;
+sol.UX = UX;
 sol.D = D;
 sol.Y = Y;
-sol.Xc = Xc;
-sol.Tc = Tc;
-% sol.computingTimes = computingTimes;
-
 %vytiskne øe¹ení
 sol
-
-    figure('Name', 'Computing times')
-    bar(Ts(1:end-1), computingTimes);
-    grid on
 
 save('results/ResultsHinf.mat', 'sol');

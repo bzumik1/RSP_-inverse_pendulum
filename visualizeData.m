@@ -1,23 +1,23 @@
-clc
+
 close all
 addpath('functions')
 addpath('gif')
 addpath('results')
 
 
-data = load('ResultsHinf.mat');
+data = load('ResultsLQG.mat');
 data = data.sol;
 
 samples = length(data.X);
 
-Xs = data.X;
-%Xest = data.Xest;
+X = data.X;
+Xest = data.Xest;
 Ts = data.T;
 U = data.U;
 D = data.D;
 Y = data.Y;
-if (isfield(data, 'Wx'))
-    Wx = data.Wx;   
+if (isfield(data, 'R'))
+    R = data.R;   
 end
 
 if (isfield(data, 'computingTimes'))
@@ -28,21 +28,19 @@ if (isfield(data, 'computingTimes'))
 end
 
 
-kRefreshPlot = 1; %vykresluje se pouze po kazdych 'kRefreshPlot" samplech
-kRefreshAnim = 1; % ~ ^
+kRefreshPlot = 50; %vykresluje se pouze po kazdych 'kRefreshPlot" samplech
+kRefreshAnim = 10; % ~ ^
 
 for k = 2:1:samples-1
     %% Vizualizace
     if(mod(k,kRefreshPlot)==0)
-%        plotRefresh(Ts,Xs,Xest,[],U,D,Y,k,kRefreshPlot); % MPC
-%        plotRefresh(Ts,Xs,Xest+X_operating,Wx,U,D,Y,k,kRefreshPlot); %LQG
-       plotRefresh(Ts,Xs,[],[],U,D,Y,k,kRefreshPlot); % Hinf
+        plotRefresh(Ts,X,Xest,R,U,D,Y,k,kRefreshPlot); %LQG
+%         plotRefresh(Ts,X,Xest,[],U,D,Y,k,kRefreshPlot); %MPC
     end
     
     if(mod(k,kRefreshAnim)==0)
-%         animRefresh(Xs,[],k); %MPC
-%         animRefresh(Xs,Wx,k); %LQG
-    animRefresh(Xs,[],k); % Hinf
+        animRefresh(X(:,k), Xest(:,k), R(k), U(k), D(k)); %LQG
+%         animRefresh(X(:,k), Xest(:,k), [], U(k), D(1,k)); %MPC
         title(k)
     end
         

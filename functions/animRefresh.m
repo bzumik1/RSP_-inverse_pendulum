@@ -1,23 +1,22 @@
-function [] = animRefresh(Xs, Wx, k)
+function [] = animRefresh(X, Xest, r, u, d)
     
     figure(2);
-    % animaci lze zrychlit pomocí úpravy kroku, napø. p?i 1:3:rows_ se
-    % vykresluje pouze každý t?etí vzorek
-        alpha = Xs(k, 2);
-        xc = Xs(k, 1);
-
+    xc = X(1);
+    alpha = X(3);
+    xce = Xest(1);
+    alphae = Xest(3);
         %poloha kyvadla
         [xp, yp] = pol2cart(alpha-pi/2, 0.45);
+        [xe, ye] = pol2cart(alphae-pi/2, 0.45);
         %% vykreslovani
         cla
         hold on
         grid on
 
         axis equal
-        %xlim([xc*1-0.1-L_p*0.5, xc*1+0.1+L_p*0.5])
-        xlim([-1.1, 1.1]);
+        xlim([-1.2, 1.2]);
         ylim([-0.6, 0.6]);
-
+        
         quiver( xc, 0,...
             xp, yp,...
             'Color', 'Black',...
@@ -28,10 +27,29 @@ function [] = animRefresh(Xs, Wx, k)
             'MarkerFaceColor',[0.3,0.1,0.5]',...
             'ShowArrowHead', 'off');
         
-        if (length(Wx) == 0)
+        quiver( xce, 0,...
+            xe, ye,...
+            'Color', 'Red',...
+            'Marker', 'O',...
+            'LineWidth',2,...
+            'ShowArrowHead', 'off');
+        
+         quiver( xc, 0,...
+            u/10, 0,...
+            'Color', 'Green',...
+            'LineWidth',2,...
+            'ShowArrowHead', 'on');
+        
+         quiver( xc, 0,...
+            d/10, 0,...
+            'Color', 'Red',...
+            'LineWidth',4,...
+            'ShowArrowHead', 'on');
+        
+        if (length(r) == 0)
             [];
         else
-            plot(Wx(k,1), 0.45, 'bO');
+            plot(r, 0.45, 'bO');
         end
 
         drawnow
