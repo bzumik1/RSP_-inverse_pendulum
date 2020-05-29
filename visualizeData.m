@@ -1,11 +1,10 @@
 
 close all
 addpath('functions')
-addpath('gif')
 addpath('results')
 
-
-data = load('ResultsLQG.mat');
+% nazev souboru dat, ktery se ma vizualizovat
+data = load('ResultsHinf.mat');
 data = data.sol;
 
 samples = length(data.X);
@@ -34,14 +33,13 @@ kRefreshAnim = 10; % ~ ^
 for k = 2:1:samples-1
     %% Vizualizace
     if(mod(k,kRefreshPlot)==0)
-        plotRefresh(Ts,X,Xest,R,U,D,Y,k,kRefreshPlot); %LQG
-%         plotRefresh(Ts,X,Xest,[],U,D,Y,k,kRefreshPlot); %MPC
+%         plotRefresh(Ts,X,Xest,R,U,D,Y,k,kRefreshPlot); %LQG
+        plotRefresh(Ts,X,Xest,[],U,D,Y,k,kRefreshPlot); %MPC
     end
     
     if(mod(k,kRefreshAnim)==0)
-        animRefresh(X(:,k), Xest(:,k), R(k), U(k), D(k)); %LQG
-%         animRefresh(X(:,k), Xest(:,k), [], U(k), D(1,k)); %MPC
-        title(k)
+%         animRefresh(X(:,k), Xest(:,k), R(k), U(k), D(k)); %LQG
+        animRefresh(X(:,k), Xest(:,k), [], U(k), D(1,k)); %MPC
     end
         
     if(mod(k,10000)==0)
