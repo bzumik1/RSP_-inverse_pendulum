@@ -4,7 +4,7 @@ clear all
 close all
 
 cd('../');
-parentDir = cd('./NLMPC');
+parentDir = cd('./Hinfinity');
 addpath(strcat(parentDir,'/functions')); %enables access to scripts in the folder
 
 p = getParameters();
@@ -12,7 +12,7 @@ s = tf('s');
 % initializeModel();
 
 %%  Model
-    X_operating = [0 0 0 0]';
+    X_operating = [0 0 pi 0]';
     [A, B] = AB(X_operating, 0);
     Co = [1 0 0 0; 0 0 1 0]; % observed outputs | measuring xc and alpha
     Cr = [1 0 0 0]; % reference outputs
@@ -24,9 +24,9 @@ s = tf('s');
     syso = ss(A,B,Cf,Df); %fully observed plant
 %% Synteza H-inf kontroleru
 % Weight functions 
-W1 = makeweight(10,[1 1],0.1);
-W2 = 0*s + 0.1;
-W3 = makeweight(0.1,[1 1],10);
+W1 = makeweight(10,[100 1],0.1);
+W2 = 0*s + 0.01;
+W3 = makeweight(0.1,[100 1],10);
 
 % [K,CL,gamma] = mixsyn(Po,W1,W2,W3);
 P = augw(sys,W1,W2,W3); %create augmented system

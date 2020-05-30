@@ -26,14 +26,14 @@ addpath(strcat(parentDir,'\functions')); %enables access to scripts in the folde
     Cho = [1 0 0 0 0; 0 0 1 0 0];
     Dh = [0;0];
     
-    Gi = ss(Ah,Bh,Cho,Dh); %added integrator
-    G = ss(A,B,Co,D); %original system
+    Gi = ss(Ah,Bh,Cho,Dh);
+    G = ss(A,B,Co,D);
 %%  Navrh regulatoru
     ctrb_ = ctrb(Gi.A,Gi.B);
     ctrbr = rank(ctrb_)
 
-%     Q = diag([5 0.1 1 0.1]); %P
-    Q = diag([1 0.1 1 0.1 5]); %I  / PI
+%     Q = diag([1 0.1 1 1 10]);
+    Q = diag([1 0.1 1 0.1 5]);
     R = 0.1;
     [K,S,e] = lqr(Gi.A,Gi.B,Q,R);
     K = lqr(Gi,Q,R);
@@ -51,7 +51,7 @@ addpath(strcat(parentDir,'\functions')); %enables access to scripts in the folde
 %   L = (lqr(A', Co', Vd, Vn))';
 
     Cf = eye(4);
-    KF = ss((G.A-L*G.C), [G.B L], Cf, 0);
+    KF = ss((G.A-L*G.C), [G.B L], eye(4), 0);
    
 %% Nastaveni pocatecnich hodnot
 %pocatecni stav
@@ -62,7 +62,7 @@ r = 1;
 %nastaveni solveru
 options = odeset();
 
-simulationTime = 30;
+simulationTime = 8e0;
 dt = 0.01; %samplovaci perioda
 kRefreshPlot = 10; %vykresluje se pouze po kazdych 'kRefreshPlot" samplech
 kRefreshAnim = 2; % ^
@@ -97,15 +97,15 @@ disp("1000 samples = " + 1000*dt + "s");
 for k = 1:simulationTime/dt
     
     % Generovani pozadovane reference
-%     if rand(1) > 0.995
-%         r = (2*rand(1)-1)*1
-%     end               
+    if rand(1) > 0.9999      
+        r = (2*rand(1)-1)*1
+    end               
 
     %% Regulace
     %definice vstupu a saturace do <-6,6>
     
       e = [Xest(:,k); Ksi(:,k)]; %vektor v rozsirenem stavovem prostoru
-      e(1) = -r + e(1); % adds proportional ref tracking
+%       e(1) = -r + e(1); % adds proportional ref tracking
       u = -K * e;
       u = min(12, max(-12, u));
      
@@ -118,16 +118,18 @@ for k = 1:simulationTime/dt
         disp(str);
       end
     %% Estimace stavu X
+
+    y_est = Co * X(:,k);
     y_msr = Y(:,k);
+    y_err = y_msr - y_est;
     Dxe = KF.A*Xest(:,k) + KF.B*[u ;y_msr];
 %     disp("est: " + y_est + "  msr: " + y_msr + "  y_err: " + y_err)
     Xest(:,k+1) = Xest(:,k) + Dxe*dt; % Euler method
     %% Simulace
     
-    % Krok simulace o dt
-    [ts, xs] = ode45(@(t, X_) pendCartC_d(X(:,k),u,d), [(k-1)*dt k*dt], X(:,k));
+    %"spojite" reseni v intervalu dt, uklada se pouze konecny stav 
+    [ts, xs] = ode45(@(t, X_) pendCartC_d(X(:,k),u,d), [(k-1)*dt k*dt], X(:,k), options);
     
-    % Ukladaji se pouze hodnoty na konci simulacniho kroku
     X(:,k+1) = xs(end,:)';
     Ts(k+1) = ts(end);
     U(k+1) = u;
@@ -135,7 +137,8 @@ for k = 1:simulationTime/dt
     D(:,k+1) = d;
     
     % mereni Y
-    Y(:,k+1) = Co * xs(end,:)' - [X_operating(1), X_operating(3)]';
+    Y(:,k+1) = Co * xs(end,:)' + ...
+               - [X_operating(1), X_operating(3)]';
 
     % error integration
     Dksi(k+1) = r - Y(1,k+1);
@@ -185,4 +188,4 @@ sol.info.L = L;
 
 sol
 
-save(strcat(parentDir,'/results/LQG-PI-Test.mat'), 'sol');
+save(strcat(parentDir,'/results/LQG-I-RefTracking.mat'), 'sol');
