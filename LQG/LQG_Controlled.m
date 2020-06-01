@@ -51,7 +51,7 @@ addpath(strcat(parentDir,'\functions')); %enables access to scripts in the folde
     
     % Plotting open loop poles and zeros
     Ksys = tf(K);
-    ol = G;
+    ol = Ksys * Go;
     eigs(ol.A)
     figure;
     subplot(121);
@@ -68,7 +68,7 @@ addpath(strcat(parentDir,'\functions')); %enables access to scripts in the folde
     title("Closed loop system pole-zero map");
     
     % Sensitivity functions
-    loopsens_ = loopsens(Go,-Ksys);
+    loopsens_ = loopsens(Go,Ksys);
     S = loopsens_.Si;
     T = loopsens_.Ti;
     KS = K*S;
@@ -245,4 +245,6 @@ sol.info.L = L;
 
 sol
 
+% Vysledky se ulozi to tohoto souboru, pro vizualizaci dat je treba tento
+% soubor nacist na zacatku kodu visualizeData.m v hlavni slozce
 save(strcat(parentDir,'/results/LQG-PI-Test.mat'), 'sol');
