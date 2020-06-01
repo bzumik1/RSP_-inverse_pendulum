@@ -24,12 +24,12 @@ s = tf('s');
     syso = ss(A,B,Cf,Df); %fully observed plant
 %% Synteza H-inf kontroleru
 % Weight functions 
-W1 = makeweight(10,[1 1],0.1);
-% W2 = makeweight(0.001, [1 0.0005],0.0001);
-W3 = makeweight(0.1,[1 1],10);
+W1 = makeweight(10,[0.01 1],0.1);
+W2 = makeweight(1, [0.1 0.9],0.8);
+W3 = makeweight(0.1,[0.01 1],10);
 
 % [K,CL,gamma] = mixsyn(sys,W1,W2,W3);
-P = augw(sys,W1,0,W3); %create augmented system
+P = augw(syso,W1,0,W3); %create augmented system
 [K, CL, gamma] = hinfsyn(P,2,1); %hinf controller synthesis
 Controller = @(x,u) K.A*x + K.B*u;
 
@@ -45,19 +45,19 @@ Mt = max(svH(1,:));
 fprintf("Ms = %f dB \n Mt = %f dB\n",mag2db(Ms), mag2db(Mt));
 %%
 figure
-p = sigmaplot(S,'b',K*S,'r',T,'g',gamma/W1,'b-.', gamma/W3, 'g-.');
+p = sigmaplot(S,'b',K*S,'r',T,'g',gamma/W1, 'b-.',gamma/W2,'r-.', gamma/W3, 'g-.');
 popt = getoptions(p);
 popt.Title.String = 'Sensitivity functions';
 popt.Grid = 'on';
 setoptions(p,popt)
-legend("S", "KS", "T", "gamma/W1", "gamma/W3");
+legend("S", "KS", "T", "gamma/W1", "gamma/W2", "gamma/W3");
 
 %% Nastaveni pocatecnich hodnot
 %pocatecni stav
 X0 = [0,0,pi*15/16,0]'; %x, alpha, dx, dalpha
-r = -0.2; %reference
+r = 0.5; %reference
 
-simulationTime = 10;
+simulationTime = 15;
 dt = 0.01; %samplovaci perioda
 
 %predalokace poli pro data
@@ -85,8 +85,6 @@ d2t = 0;
 d2a = 0;
 
 %% Simulace
-uiwait(msgbox('Start simulation?'));
-
 hbar = waitbar(0,'Simulation Progress');
 tic
 disp("1000 samples = " + 1000*dt + "s");
@@ -102,7 +100,7 @@ for k = 1:simulationTime/dt
     e = w-Y(:,k);    
     [~, ux] = ode45(@(t,x) Controller(UX(:,k),e), [(k-1)*dt k*dt], UX(:,k));
     UX(:,k+1) = ux(end,:)';
-    u = K.C * UX(:,k+1);
+    u = K.C * UX(:,k);
 %     u = min(15, max(-15, u)); %saturation
    %% Simulace
     

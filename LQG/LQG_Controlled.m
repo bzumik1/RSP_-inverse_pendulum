@@ -26,17 +26,71 @@ addpath(strcat(parentDir,'\functions')); %enables access to scripts in the folde
     Cho = [1 0 0 0 0; 0 0 1 0 0];
     Dh = [0;0];
     
-    Gi = ss(Ah,Bh,Cho,Dh); %added integrator
-    G = ss(A,B,Co,D); %original system
+    Gi = ss(Ah,Bh,Cho,Dh,...
+        'StateName', {'x1','x2','x3','x4','Ksi'},...
+        'OutputName', {'x_c','alpha'}); %added integrator
+    G = ss(A,B,Co,D,...
+        'StateName', {'x1','x2','x3','x4'},...
+        'OutputName', {'x_c','alpha'}); %original system
+    Go = ss(A,B,eye(4),zeros(4,1),...
+        'StateName', {'x1','x2','x3','x4'},...
+        'OutputName', {'x_c','dx_c','alpha','dalpha'}); %fully observed system
+    
+    figure;
+    iopzmap(Go);
+    title("Pole-zero map of the plant");
 %%  Navrh regulatoru
-    ctrb_ = ctrb(Gi.A,Gi.B);
+    ctrb_ = ctrb(G.A,G.B);
     ctrbr = rank(ctrb_)
 
-%     Q = diag([5 0.1 1 0.1]); %P
-    Q = diag([1 0.1 1 0.1 5]); %I  / PI
+    Q = diag([5 0.1 1 0.1]); %P
+%     Q = diag([1 0.1 1 0.1 5]); %I  / PI
     R = 0.1;
-    [K,S,e] = lqr(Gi.A,Gi.B,Q,R);
-    K = lqr(Gi,Q,R);
+    [K,S,e] = lqr(G.A,G.B,Q,R);
+    K = lqr(G,Q,R);
+    
+    % Plotting open loop poles and zeros
+    Ksys = tf(K);
+    ol = G;
+    eigs(ol.A)
+    figure;
+    subplot(121);
+    iopzmap(ol);
+    title("Open loop system pole-zero map");
+    subplot(122);
+    nyquist(ol);
+    
+    % Plotting closed loop poles and zeros
+    cl = feedback(Go,Ksys); %using the fully observed system
+    eigs(cl.A)
+    figure;
+    iopzmap(cl);
+    title("Closed loop system pole-zero map");
+    
+    % Sensitivity functions
+    loopsens_ = loopsens(Go,-Ksys);
+    S = loopsens_.Si;
+    T = loopsens_.Ti;
+    KS = K*S;
+    
+    % Calculate M_S and M_T
+    [svH, wH] = sigma(S);
+    Ms = max(svH(1,:));
+    [svH, wH] = sigma(T);
+    Mt = max(svH(1,:));
+    fprintf("Ms = %f dB \n Mt = %f dB\n",mag2db(Ms), mag2db(Mt));
+
+    % Plotting sensitivity functions
+    figure
+    p = sigmaplot(S,'b',K*S,'r',T,'g');
+    hold on
+    yline(0);
+    popt = getoptions(p);
+    popt.Title.String = 'Sensitivity functions';
+    popt.Grid = 'on';
+    setoptions(p,popt)
+    legend("S", "KS", "T", "0 dB");
+    
 %% Navrh estimatoru
     obsv_ = obsv(G.A,G.C);
     obsvr = rank(obsv_)
@@ -53,6 +107,10 @@ addpath(strcat(parentDir,'\functions')); %enables access to scripts in the folde
     Cf = eye(4);
     KF = ss((G.A-L*G.C), [G.B L], Cf, 0);
    
+    eigs(KF.A)
+    figure;
+    pzplot(KF);
+    title("Estimator pole-zero map")
 %% Nastaveni pocatecnich hodnot
 %pocatecni stav
 X0 = [0,0,pi,0]'; %x, alpha, dx, dalpha
@@ -62,7 +120,7 @@ r = 1;
 %nastaveni solveru
 options = odeset();
 
-simulationTime = 30;
+simulationTime = 10;
 dt = 0.01; %samplovaci perioda
 kRefreshPlot = 10; %vykresluje se pouze po kazdych 'kRefreshPlot" samplech
 kRefreshAnim = 2; % ^
@@ -91,6 +149,8 @@ d1t = 0; %jak dlouho je porucha 1 momentalne aktivni
 d1a = 0; %amplituda poruchy 1
 
 %% Simulace
+uiwait(msgbox('Start simulation?'));
+
 hbar = waitbar(0,'Simulation Progress');
 tic
 disp("1000 samples = " + 1000*dt + "s");
@@ -104,7 +164,7 @@ for k = 1:simulationTime/dt
     %% Regulace
     %definice vstupu a saturace do <-6,6>
     
-      e = [Xest(:,k); Ksi(:,k)]; %vektor v rozsirenem stavovem prostoru
+      e = [Xest(:,k)]; %vektor v rozsirenem stavovem prostoru
       e(1) = -r + e(1); % adds proportional ref tracking
       u = -K * e;
       u = min(12, max(-12, u));
